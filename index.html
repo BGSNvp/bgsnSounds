@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎚️ StreamBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3d;
+    --accent: #00f5a0;
+    --accent2: #f500a0;
+    --accent3: #f5a000;
+    --accent4: #0090f5;
+    --text: #e8e8f0;
+    --text-dim: #6a6a8a;
+    --danger: #ff3b5c;
+    --playing: #00f5a0;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,245,160,0.5);
+    white-space: nowrap;
+  }
+
+  .logo span { color: var(--accent2); }
+
+  .header-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
+  #search {
+    flex: 1;
+    min-width: 120px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--text-dim); }
+
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+    user-select: none;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: scale(.96); }
+  .btn.danger { border-color: var(--danger); color: var(--danger); }
+  .btn.accent { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 700; }
+  .btn.accent:hover { background: #00ffaa; }
+
+  /* ─── CATEGORY TABS ─── */
+  .cat-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: sticky;
+    top: 57px;
+    z-index: 99;
+  }
+  .cat-bar::-webkit-scrollbar { display: none; }
+
+  .cat-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 5px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+    user-select: none;
+  }
+  .cat-btn.active, .cat-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,245,160,0.08);
+  }
+
+  /* ─── VOLUME BAR ─── */
+  .vol-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  #vol-slider {
+    flex: 1;
+    max-width: 200px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  #vol-label { color: var(--accent); font-weight: 700; min-width: 36px; }
+
+  #stop-all {
+    margin-left: auto;
+    background: rgba(255,59,92,0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  #stop-all:hover { background: rgba(255,59,92,0.3); }
+
+  /* ─── GRID ─── */
+  #grid {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
+
+  @media (max-width: 480px) {
+    #grid { grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; }
+  }
+
+  /* ─── SOUND CARD ─── */
+  .sound-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-height: 80px;
+    justify-content: center;
+  }
+
+  .sound-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+
+  .sound-card:active { transform: scale(.94); }
+
+  .sound-card.playing {
+    border-color: var(--playing);
+    box-shadow: 0 0 18px rgba(0,245,160,0.35);
+  }
+  .sound-card.playing::before { opacity: 1; background: rgba(0,245,160,0.07); }
+
+  .sound-card .emoji { font-size: 22px; line-height: 1; }
+  .sound-card .label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    line-height: 1.3;
+    color: var(--text);
+    word-break: break-word;
+    text-transform: uppercase;
+  }
+
+  .sound-card .cat-tag {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: .3px;
+  }
+
+  /* Color coding by category */
+  .sound-card[data-cat="reactions"] { border-color: #2a1e40; }
+  .sound-card[data-cat="reactions"]:hover { border-color: var(--accent2); box-shadow: 0 0 12px rgba(245,0,160,0.2); }
+  .sound-card[data-cat="alerts"] { border-color: #1e2a14; }
+  .sound-card[data-cat="alerts"]:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(0,245,160,0.2); }
+  .sound-card[data-cat="music"] { border-color: #1e1a2a; }
+  .sound-card[data-cat="music"]:hover { border-color: var(--accent4); box-shadow: 0 0 12px rgba(0,144,245,0.2); }
+  .sound-card[data-cat="comedy"] { border-color: #2a2014; }
+  .sound-card[data-cat="comedy"]:hover { border-color: var(--accent3); box-shadow: 0 0 12px rgba(245,160,0,0.2); }
+  .sound-card[data-cat="gaming"] { border-color: #14202a; }
+  .sound-card[data-cat="gaming"]:hover { border-color: #00d4f5; box-shadow: 0 0 12px rgba(0,212,245,0.2); }
+  .sound-card[data-cat="custom"] { border-color: #2a1414; }
+  .sound-card[data-cat="custom"]:hover { border-color: var(--danger); box-shadow: 0 0 12px rgba(255,59,92,0.2); }
+
+  /* ─── PROGRESS BAR on playing card ─── */
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--accent);
+    width: 0%;
+    transition: width .1s linear;
+  }
+
+  /* ─── EMPTY STATE ─── */
+  #empty-state {
+    grid-column: 1/-1;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 60px 20px;
+    font-size: 13px;
+    line-height: 2;
+    display: none;
+  }
+  #empty-state .big { font-size: 40px; }
+
+  /* ─── ADD SOUND MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .modal h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+
+  .source-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .src-tab {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 7px 8px;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+  }
+  .src-tab.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,245,160,0.08);
+  }
+
+  .sound-card .src-badge {
+    position: absolute;
+    top: 4px; right: 4px;
+    font-size: 8px;
+    opacity: 0.5;
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); color: var(--accent); background: rgba(0,245,160,0.04); }
+  .upload-zone .up-icon { font-size: 28px; display: block; margin-bottom: 4px; }
+
+  #file-input { display: none; }
+
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+  /* ─── STATUS BAR ─── */
+  #status-bar {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 8px 20px;
+    font-size: 11px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    z-index: 300;
+    white-space: nowrap;
+  }
+  #status-bar.show { opacity: 1; }
+
+  /* ─── LONG PRESS CONTEXT MENU ─── */
+  .ctx-menu {
+    display: none;
+    position: fixed;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 0;
+    z-index: 500;
+    min-width: 150px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .ctx-menu.open { display: block; }
+  .ctx-item {
+    padding: 10px 16px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .1s;
+  }
+  .ctx-item:hover { background: rgba(255,255,255,0.06); }
+  .ctx-item.red { color: var(--danger); }
+
+  /* ─── COUNT ─── */
+  #sound-count {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Stream<span>Board</span></div>
+  <div class="header-controls">
+    <input type="text" id="search" placeholder="Search sounds..." autocomplete="off" spellcheck="false">
+    <button class="btn accent" onclick="openModal()">+ ADD</button>
+    <button class="btn" onclick="openSyncModal()" title="Sync via GitHub Gist">☁️ SYNC</button>
+    <button class="btn" onclick="exportSounds()" title="Export sound library">EXPORT</button>
+    <label class="btn" title="Import sound library" style="cursor:pointer">
+      IMPORT<input type="file" id="import-input" accept=".json" style="display:none" onchange="importSounds(event)">
+    </label>
+  </div>
+</header>
+
+<!-- CATEGORY TABS -->
+<div class="cat-bar" id="cat-bar">
+  <button class="cat-btn active" data-cat="all">ALL</button>
+  <button class="cat-btn" data-cat="reactions">REACTIONS</button>
+  <button class="cat-btn" data-cat="alerts">ALERTS</button>
+  <button class="cat-btn" data-cat="music">MUSIC</button>
+  <button class="cat-btn" data-cat="comedy">COMEDY</button>
+  <button class="cat-btn" data-cat="gaming">GAMING</button>
+  <button class="cat-btn" data-cat="custom">CUSTOM</button>
+</div>
+
+<!-- VOLUME + STOP -->
+<div class="vol-bar">
+  <span>VOL</span>
+  <input type="range" id="vol-slider" min="0" max="100" value="80" step="1">
+  <span id="vol-label">80%</span>
+  <span id="sound-count">0 sounds</span>
+  <button class="btn" id="stop-all" onclick="stopAll()">⏹ STOP ALL</button>
+</div>
+
+<!-- SOUND GRID -->
+<div id="grid">
+  <div id="empty-state">
+    <span class="big">🎚️</span><br>
+    No sounds found.<br>
+    <span style="font-size:11px">Tap <strong>+ ADD</strong> to add your first sound.</span>
+  </div>
+</div>
+
+<!-- ADD SOUND MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="outsideClose(event)">
+  <div class="modal">
+    <h2 id="modal-title">Add Sound</h2>
+    <div class="field">
+      <label>Sound Name</label>
+      <input type="text" id="f-name" placeholder="e.g. Air Horn" maxlength="40">
+    </div>
+    <div class="field">
+      <label>Emoji Icon</label>
+      <input type="text" id="f-emoji" placeholder="🎺" maxlength="4">
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <select id="f-cat">
+        <option value="reactions">Reactions</option>
+        <option value="alerts">Alerts</option>
+        <option value="music">Music</option>
+        <option value="comedy">Comedy</option>
+        <option value="gaming">Gaming</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Audio Source</label>
+      <div class="source-tabs">
+        <button class="src-tab active" data-src="file" onclick="switchSrcTab('file')">📁 File Upload</button>
+        <button class="src-tab" data-src="url" onclick="switchSrcTab('url')">🔗 URL / GitHub</button>
+      </div>
+
+      <!-- FILE UPLOAD PANEL -->
+      <div id="src-file-panel">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+          <span class="up-icon">🎵</span>
+          <span id="upload-label">Tap to select audio file<br><small style="color:var(--text-dim)">MP3, WAV, OGG, M4A, FLAC</small></span>
+        </div>
+        <input type="file" id="file-input" accept="audio/*">
+      </div>
+
+      <!-- URL PANEL -->
+      <div id="src-url-panel" style="display:none">
+        <input type="text" id="f-url" placeholder="https://raw.githubusercontent.com/you/repo/main/sound.mp3" style="width:100%;margin-bottom:6px">
+        <div id="url-hint" style="font-size:10px;color:var(--text-dim);line-height:1.6">
+          Paste any direct audio URL.<br>
+          <span style="color:var(--accent3)">GitHub:</span> open file → click <strong>Raw</strong> → copy URL<br>
+          <span style="color:var(--accent3)">GitHub share links</span> are auto-converted ✨
+        </div>
+        <button class="btn" style="margin-top:8px;width:100%;font-size:11px" onclick="testUrl()">▶ TEST URL</button>
+        <div id="url-status" style="font-size:10px;margin-top:6px;min-height:16px"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">CANCEL</button>
+      <button class="btn accent" onclick="saveSound()">SAVE SOUND</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="ctxAdjustVolume()">🎚️ Adjust Volume</div>
+  <div class="ctx-item" onclick="ctxRename()">✏️ Rename</div>
+  <div class="ctx-item" onclick="ctxChangeEmoji()">😀 Change Emoji</div>
+  <div class="ctx-item" onclick="ctxChangeCategory()">📂 Change Category</div>
+  <div class="ctx-item red" onclick="ctxDelete()">🗑️ Delete</div>
+</div>
+
+<!-- TRIM MODAL -->
+<div class="modal-overlay" id="trim-overlay" onclick="outsideTrimClose(event)">
+  <div class="modal" style="max-width:340px">
+    <h2>🎚️ Sound Volume</h2>
+    <div style="font-size:11px;color:var(--text-dim)" id="trim-sound-name"></div>
+    <div class="field">
+      <label>Trim Level</label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <input type="range" id="trim-slider" min="0" max="300" value="100" step="1" style="flex:1;accent-color:var(--accent3)">
+        <span id="trim-label" style="color:var(--accent3);font-weight:700;min-width:44px;font-size:13px">100%</span>
+      </div>
+      <div id="trim-db" style="font-size:10px;color:var(--text-dim);margin-top:2px">0.0 dB</div>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);line-height:1.7;background:var(--surface2);border-radius:6px;padding:10px">
+      100% = original file level<br>
+      Auto-normalized on upload sets this automatically.<br>
+      A hard limiter prevents clipping above 0 dBFS regardless.
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1" onclick="setTrimPreset(50)">50%</button>
+      <button class="btn" style="flex:1" onclick="setTrimPreset(100)">100%</button>
+      <button class="btn" style="flex:1" onclick="setTrimPreset(150)">150%</button>
+      <button class="btn accent" style="flex:1" onclick="saveTrim()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- SYNC MODAL -->
+<div class="modal-overlay" id="sync-overlay" onclick="outsideSyncClose(event)">
+  <div class="modal" style="max-width:440px">
+    <h2>☁️ GitHub Sync</h2>
+
+    <!-- SETUP STATE -->
+    <div id="sync-setup">
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.8;background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:4px">
+        Your library syncs via a <strong style="color:var(--text)">private GitHub Gist</strong> — free, no extra account needed.<br>
+        <strong style="color:var(--accent3)">Setup (one time per device):</strong><br>
+        1. Go to <strong>github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)</strong><br>
+        2. Click <strong>Generate new token (classic)</strong><br>
+        3. Check only the <strong>gist</strong> scope<br>
+        4. Copy the token and paste below
+      </div>
+      <div class="field">
+        <label>GitHub Personal Access Token</label>
+        <div style="display:flex;gap:6px">
+          <input type="password" id="sync-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="flex:1">
+          <button class="btn" onclick="toggleTokenVis()" id="tok-vis-btn" style="padding:8px 10px">👁</button>
+        </div>
+        <div id="sync-token-status" style="font-size:10px;margin-top:4px;min-height:14px"></div>
+      </div>
+      <div class="field" id="gist-id-field" style="display:none">
+        <label>Gist ID <span style="color:var(--text-dim)">(auto-filled after first push)</span></label>
+        <input type="text" id="sync-gist-id" placeholder="auto" readonly style="color:var(--text-dim)">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button class="btn" style="flex:1;font-size:11px" onclick="closeSyncModal()">CANCEL</button>
+        <button class="btn" style="flex:1;font-size:11px;border-color:var(--accent4);color:var(--accent4)" onclick="syncPull()">⬇ PULL</button>
+        <button class="btn accent" style="flex:1;font-size:11px" onclick="syncPush()">⬆ PUSH</button>
+      </div>
+    </div>
+
+    <!-- STATUS -->
+    <div id="sync-status-area" style="font-size:11px;min-height:20px;margin-top:4px;text-align:center"></div>
+
+    <!-- CONNECTED STATE badge -->
+    <div id="sync-connected-badge" style="display:none;font-size:10px;color:var(--accent);text-align:center;margin-top:2px">
+      ✅ Token saved on this device
+    </div>
+
+    <div style="font-size:9px;color:var(--text-dim);margin-top:6px;line-height:1.6">
+      Token stored only in this device's localStorage. Your Gist is private.<br>
+      Only URL-based sounds sync perfectly. Embedded files are large — consider moving to GitHub URLs.
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="status-bar"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let sounds = [];
+let activeCat = 'all';
+let searchQ = '';
+let editingId = null;
+let ctxTargetId = null;
+let masterVolume = 0.80;
+let audioObjects = {}; // id -> { source, gainNode }
+let longPressTimer = null;
+let pendingAudioData = null;
+let pendingNormalizedGain = 1.0; // auto-detected gain for current file
+
+// ─── WEB AUDIO CONTEXT + LIMITER ─────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let limiter = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    limiter = audioCtx.createDynamicsCompressor();
+    limiter.threshold.value = -1;   // start limiting at -1 dBFS
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;       // hard brick-wall
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.1;
+    masterGain.gain.value = masterVolume;
+    masterGain.connect(limiter);
+    limiter.connect(audioCtx.destination);
+  }
+  return audioCtx;
+}
+
+// ─── STORAGE ─────────────────────────────────────────────
+function save() {
+  localStorage.setItem('streamboard_sounds', JSON.stringify(sounds));
+}
+
+function load() {
+  try {
+    const d = localStorage.getItem('streamboard_sounds');
+    if (d) sounds = JSON.parse(d);
+  } catch(e) { sounds = []; }
+  // Restore master volume
+  const savedVol = localStorage.getItem('streamboard_master_vol');
+  if (savedVol !== null) {
+    masterVolume = parseFloat(savedVol);
+    const pct = Math.round(masterVolume * 100);
+    document.getElementById('vol-slider').value = pct;
+    document.getElementById('vol-label').textContent = pct + '%';
+  }
+}
+
+// ─── RENDER ──────────────────────────────────────────────
+function render() {
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty-state');
+  const countEl = document.getElementById('sound-count');
+
+  let filtered = sounds;
+  if (activeCat !== 'all') filtered = filtered.filter(s => s.cat === activeCat);
+  if (searchQ) {
+    const q = searchQ.toLowerCase();
+    filtered = filtered.filter(s => s.name.toLowerCase().includes(q));
+  }
+
+  // Remove old cards (but keep empty state)
+  [...grid.querySelectorAll('.sound-card')].forEach(el => el.remove());
+
+  countEl.textContent = `${filtered.length} / ${sounds.length} sounds`;
+
+  if (filtered.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  filtered.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'sound-card';
+    card.dataset.id = s.id;
+    card.dataset.cat = s.cat || 'custom';
+    card.innerHTML = `
+      <span class="emoji">${s.emoji || '🔊'}</span>
+      <span class="label">${escHtml(s.name)}</span>
+      <span class="cat-tag">${s.cat}</span>
+      <span class="src-badge">${s.url ? '🔗' : '💾'}</span>
+      <div class="progress-bar" id="pb-${s.id}"></div>
+    `;
+    // Show trim indicator if not default
+    const trim = s.trim || 1.0;
+    if (Math.abs(trim - 1.0) > 0.02) {
+      const trimSpan = document.createElement('span');
+      trimSpan.style.cssText = 'font-size:9px;color:var(--accent3);position:absolute;bottom:5px;left:5px;';
+      trimSpan.textContent = Math.round(trim * 100) + '%';
+      card.appendChild(trimSpan);
+    }
+
+    // Tap to play
+    card.addEventListener('pointerdown', (e) => {
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+        openCtxMenu(s.id, e.clientX, e.clientY);
+      }, 500);
+    });
+    card.addEventListener('pointerup', (e) => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        playSound(s.id);
+      }
+    });
+    card.addEventListener('pointercancel', () => { clearTimeout(longPressTimer); longPressTimer = null; });
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openCtxMenu(s.id, e.clientX, e.clientY);
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── AUDIO PLAYBACK ──────────────────────────────────────
+async function playSound(id) {
+  const sound = sounds.find(s => s.id === id);
+  if (!sound) return;
+  const src = sound.url || sound.data;
+  if (!src) { showStatus('No audio source for this sound'); return; }
+
+  // Resume context on user gesture (required by browsers)
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') await ctx.resume();
+
+  // Stop existing instance
+  stopSound(id);
+
+  const card = document.querySelector(`.sound-card[data-id="${id}"]`);
+  const pb = document.getElementById(`pb-${id}`);
+
+  // Per-sound gain trim (default 1.0 = 100%)
+  const trimGain = typeof sound.trim === 'number' ? sound.trim : 1.0;
+
+  try {
+    // Fetch and decode audio buffer
+    const resp = await fetch(src);
+    const arrayBuf = await resp.arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(arrayBuf);
+
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuf;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = trimGain;
+
+    source.connect(gainNode);
+    gainNode.connect(masterGain);
+    source.start(0);
+
+    audioObjects[id] = { source, gainNode, startTime: ctx.currentTime, duration: audioBuf.duration };
+
+    if (card) card.classList.add('playing');
+
+    // Progress bar via rAF
+    function updatePb() {
+      if (!audioObjects[id]) return;
+      const elapsed = ctx.currentTime - audioObjects[id].startTime;
+      const pct = Math.min(elapsed / audioBuf.duration * 100, 100);
+      if (pb) pb.style.width = pct + '%';
+      if (pct < 100) requestAnimationFrame(updatePb);
+    }
+    requestAnimationFrame(updatePb);
+
+    source.onended = () => {
+      if (card) card.classList.remove('playing');
+      if (pb) pb.style.width = '0%';
+      delete audioObjects[id];
+    };
+
+  } catch(e) {
+    showStatus('Playback error: ' + e.message);
+    if (card) card.classList.remove('playing');
+  }
+}
+
+function stopSound(id) {
+  if (audioObjects[id]) {
+    try { audioObjects[id].source.stop(); } catch(e) {}
+    delete audioObjects[id];
+  }
+  const card = document.querySelector(`.sound-card[data-id="${id}"]`);
+  if (card) card.classList.remove('playing');
+  const pb = document.getElementById(`pb-${id}`);
+  if (pb) pb.style.width = '0%';
+}
+
+function stopAll() {
+  Object.keys(audioObjects).forEach(id => stopSound(id));
+  showStatus('All sounds stopped');
+}
+
+// ─── VOLUME ───────────────────────────────────────────────
+const volSlider = document.getElementById('vol-slider');
+const volLabel = document.getElementById('vol-label');
+volSlider.addEventListener('input', () => {
+  masterVolume = volSlider.value / 100;
+  volLabel.textContent = volSlider.value + '%';
+  if (masterGain) masterGain.gain.value = masterVolume;
+  localStorage.setItem('streamboard_master_vol', masterVolume);
+});
+
+// ─── SEARCH ──────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', (e) => {
+  searchQ = e.target.value.trim();
+  render();
+});
+
+// ─── CATEGORY ─────────────────────────────────────────────
+document.getElementById('cat-bar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.cat-btn');
+  if (!btn) return;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeCat = btn.dataset.cat;
+  render();
+});
+
+// ─── ADD SOUND MODAL ──────────────────────────────────────
+function openModal(id = null) {
+  editingId = id;
+  pendingAudioData = null;
+  pendingNormalizedGain = 1.0;
+  document.getElementById('modal-title').textContent = id ? 'Edit Sound' : 'Add Sound';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-emoji').value = '';
+  document.getElementById('f-cat').value = 'reactions';
+  document.getElementById('upload-label').innerHTML = 'Tap to select audio file<br><small style="color:var(--text-dim)">MP3, WAV, OGG, M4A, FLAC</small>';
+  document.getElementById('file-input').value = '';
+  document.getElementById('f-url').value = '';
+  document.getElementById('url-status').textContent = '';
+  switchSrcTab('file');
+
+  if (id) {
+    const s = sounds.find(s => s.id === id);
+    if (s) {
+      document.getElementById('f-name').value = s.name;
+      document.getElementById('f-emoji').value = s.emoji || '';
+      document.getElementById('f-cat').value = s.cat || 'custom';
+      if (s.url) {
+        switchSrcTab('url');
+        document.getElementById('f-url').value = s.url;
+        document.getElementById('url-status').innerHTML = '<span style="color:var(--accent)">✅ URL loaded</span>';
+        pendingAudioData = s.url;
+      } else {
+        pendingAudioData = s.data;
+        document.getElementById('upload-label').innerHTML = '✅ Audio loaded<br><small style="color:var(--text-dim)">Tap to replace</small>';
+      }
+    }
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 100);
+}
+
+function switchSrcTab(mode) {
+  document.querySelectorAll('.src-tab').forEach(t => t.classList.toggle('active', t.dataset.src === mode));
+  document.getElementById('src-file-panel').style.display = mode === 'file' ? 'block' : 'none';
+  document.getElementById('src-url-panel').style.display = mode === 'url' ? 'block' : 'none';
+}
+
+function normalizeGithubUrl(url) {
+  // Convert github.com file view URLs to raw.githubusercontent.com
+  // https://github.com/user/repo/blob/branch/path -> https://raw.githubusercontent.com/user/repo/branch/path
+  const m = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+  if (m) return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
+  return url;
+}
+
+function testUrl() {
+  let url = document.getElementById('f-url').value.trim();
+  if (!url) { setUrlStatus('Enter a URL first', 'dim'); return; }
+  url = normalizeGithubUrl(url);
+  document.getElementById('f-url').value = url;
+  setUrlStatus('Testing...', 'dim');
+  const audio = new Audio();
+  audio.src = url;
+  audio.volume = 0.5;
+  const timeout = setTimeout(() => {
+    audio.pause();
+    setUrlStatus('⚠️ Timed out — URL may still work on play', 'warn');
+  }, 6000);
+  audio.addEventListener('canplaythrough', () => {
+    clearTimeout(timeout);
+    setUrlStatus('✅ URL works! Ready to save.', 'ok');
+    audio.play().then(() => setTimeout(() => audio.pause(), 2000)).catch(()=>{});
+    pendingAudioData = url;
+  }, { once: true });
+  audio.addEventListener('error', () => {
+    clearTimeout(timeout);
+    setUrlStatus('❌ Could not load — check URL and CORS', 'err');
+  }, { once: true });
+  audio.load();
+}
+
+function setUrlStatus(msg, type) {
+  const el = document.getElementById('url-status');
+  const colors = { ok: 'var(--accent)', err: 'var(--danger)', warn: 'var(--accent3)', dim: 'var(--text-dim)' };
+  el.innerHTML = `<span style="color:${colors[type]||'var(--text-dim)'}">${msg}</span>`;
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+  pendingAudioData = null;
+}
+
+function outsideClose(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+// ─── AUTO-NORMALIZE ──────────────────────────────────────
+async function analyzePeak(arrayBuffer) {
+  // Decode in a temporary offline context to measure peak
+  try {
+    const tmpCtx = new OfflineAudioContext(1, 1, 44100);
+    const buf = await tmpCtx.decodeAudioData(arrayBuffer.slice(0));
+    let peak = 0;
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+      const data = buf.getChannelData(ch);
+      for (let i = 0; i < data.length; i++) {
+        const abs = Math.abs(data[i]);
+        if (abs > peak) peak = abs;
+      }
+    }
+    // Target -3 dBFS (0.708) — headroom before limiter
+    const targetPeak = 0.708;
+    const gain = peak > 0.001 ? Math.min(targetPeak / peak, 4.0) : 1.0;
+    return { peak, gain };
+  } catch(e) {
+    return { peak: 1, gain: 1 };
+  }
+}
+
+// File input
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('upload-label').innerHTML = `⏳ Analyzing audio…<br><small style="color:var(--text-dim)">${file.name}</small>`;
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const base64 = ev.target.result;
+    pendingAudioData = base64;
+
+    // Run normalize analysis
+    try {
+      const arrayBuf = ev.target.result.split(',')[1];
+      const binary = atob(arrayBuf);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const { peak, gain } = await analyzePeak(bytes.buffer);
+      pendingNormalizedGain = gain;
+      const peakDb = peak > 0 ? (20 * Math.log10(peak)).toFixed(1) : '-∞';
+      const gainDb = (20 * Math.log10(gain)).toFixed(1);
+      const normLabel = gain !== 1.0
+        ? `<span style="color:var(--accent3)">Peak: ${peakDb} dB → +${gainDb > 0 ? gainDb : gainDb} dB trim applied</span>`
+        : `<span style="color:var(--accent)">Peak: ${peakDb} dB — already normalized</span>`;
+      document.getElementById('upload-label').innerHTML = `✅ ${file.name}<br><small>${normLabel}</small>`;
+    } catch(err) {
+      pendingNormalizedGain = 1.0;
+      document.getElementById('upload-label').innerHTML = `✅ ${file.name}<br><small style="color:var(--text-dim)">${(file.size/1024).toFixed(0)} KB</small>`;
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+// Drag & drop
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('audio/')) {
+    // Reuse file input handler by triggering a fake change
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('file-input').files = dt.files;
+    document.getElementById('file-input').dispatchEvent(new Event('change'));
+  }
+});
+
+function saveSound() {
+  const name = document.getElementById('f-name').value.trim();
+  const emoji = document.getElementById('f-emoji').value.trim() || '🔊';
+  const cat = document.getElementById('f-cat').value;
+  const isUrlMode = document.getElementById('src-url-panel').style.display !== 'none';
+
+  if (!name) { showStatus('Please enter a sound name'); return; }
+
+  if (isUrlMode) {
+    let url = document.getElementById('f-url').value.trim();
+    if (!url) { showStatus('Please enter a URL'); return; }
+    url = normalizeGithubUrl(url);
+    pendingAudioData = url;
+    pendingNormalizedGain = 1.0; // URLs: no analysis, default trim
+  }
+
+  if (!pendingAudioData) { showStatus('Please select an audio file or enter a URL'); return; }
+
+  const isUrl = typeof pendingAudioData === 'string' && pendingAudioData.startsWith('http');
+  const trim = pendingNormalizedGain;
+  const entry = isUrl
+    ? { name, emoji, cat, url: pendingAudioData, data: null, trim }
+    : { name, emoji, cat, url: null, data: pendingAudioData, trim };
+
+  if (editingId) {
+    const idx = sounds.findIndex(s => s.id === editingId);
+    if (idx !== -1) {
+      // Preserve existing trim if re-saving without new file
+      const existingTrim = sounds[idx].trim;
+      sounds[idx] = { ...sounds[idx], ...entry };
+      if (isUrlMode && !pendingNormalizedGain) sounds[idx].trim = existingTrim;
+      showStatus(`Updated: ${name}`);
+    }
+  } else {
+    const id = 'snd_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    sounds.push({ id, ...entry });
+    showStatus(`Added: ${name}`);
+  }
+
+  save();
+  closeModal();
+  render();
+}
+
+// ─── CONTEXT MENU ─────────────────────────────────────────
+function openCtxMenu(id, x, y) {
+  ctxTargetId = id;
+  const menu = document.getElementById('ctx-menu');
+  menu.classList.add('open');
+  const mw = 160, mh = 160;
+  const left = Math.min(x, window.innerWidth - mw - 8);
+  const top = Math.min(y, window.innerHeight - mh - 8);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+}
+
+document.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#ctx-menu')) {
+    document.getElementById('ctx-menu').classList.remove('open');
+  }
+});
+
+function ctxRename() {
+  document.getElementById('ctx-menu').classList.remove('open');
+  const s = sounds.find(s => s.id === ctxTargetId);
+  if (!s) return;
+  const n = prompt('Rename sound:', s.name);
+  if (n && n.trim()) {
+    s.name = n.trim();
+    save(); render();
+    showStatus('Renamed');
+  }
+}
+
+function ctxChangeEmoji() {
+  document.getElementById('ctx-menu').classList.remove('open');
+  const s = sounds.find(s => s.id === ctxTargetId);
+  if (!s) return;
+  const e = prompt('New emoji:', s.emoji || '🔊');
+  if (e) {
+    s.emoji = e.trim().charAt(0) || '🔊';
+    save(); render();
+    showStatus('Emoji updated');
+  }
+}
+
+function ctxChangeCategory() {
+  document.getElementById('ctx-menu').classList.remove('open');
+  openModal(ctxTargetId);
+}
+
+function ctxAdjustVolume() {
+  document.getElementById('ctx-menu').classList.remove('open');
+  const s = sounds.find(s => s.id === ctxTargetId);
+  if (!s) return;
+  const pct = Math.round((s.trim || 1.0) * 100);
+  document.getElementById('trim-sound-name').textContent = s.name;
+  document.getElementById('trim-slider').value = pct;
+  document.getElementById('trim-label').textContent = pct + '%';
+  updateTrimDb(pct);
+  document.getElementById('trim-overlay').classList.add('open');
+}
+
+document.getElementById('trim-slider').addEventListener('input', (e) => {
+  const pct = parseInt(e.target.value);
+  document.getElementById('trim-label').textContent = pct + '%';
+  updateTrimDb(pct);
+});
+
+function updateTrimDb(pct) {
+  const gain = pct / 100;
+  const db = gain > 0 ? (20 * Math.log10(gain)).toFixed(1) : '-∞';
+  document.getElementById('trim-db').textContent = `${db > 0 ? '+' : ''}${db} dB`;
+}
+
+function setTrimPreset(pct) {
+  document.getElementById('trim-slider').value = pct;
+  document.getElementById('trim-label').textContent = pct + '%';
+  updateTrimDb(pct);
+}
+
+function saveTrim() {
+  const pct = parseInt(document.getElementById('trim-slider').value);
+  const s = sounds.find(s => s.id === ctxTargetId);
+  if (s) {
+    s.trim = pct / 100;
+    save();
+    render();
+    showStatus(`Volume trim set to ${pct}% for "${s.name}"`);
+  }
+  document.getElementById('trim-overlay').classList.remove('open');
+}
+
+function outsideTrimClose(e) {
+  if (e.target === document.getElementById('trim-overlay'))
+    document.getElementById('trim-overlay').classList.remove('open');
+}
+
+
+function ctxDelete() {
+  document.getElementById('ctx-menu').classList.remove('open');
+  const s = sounds.find(s => s.id === ctxTargetId);
+  if (!s) return;
+  if (!confirm(`Delete "${s.name}"?`)) return;
+  stopSound(ctxTargetId);
+  sounds = sounds.filter(s => s.id !== ctxTargetId);
+  save(); render();
+  showStatus('Sound deleted');
+}
+
+// ─── GITHUB GIST SYNC ────────────────────────────────────
+const GIST_FILENAME = 'streamboard_library.json';
+
+function openSyncModal() {
+  const token = localStorage.getItem('sb_gh_token') || '';
+  const gistId = localStorage.getItem('sb_gist_id') || '';
+  document.getElementById('sync-token').value = token;
+  document.getElementById('sync-token').type = 'password';
+  document.getElementById('tok-vis-btn').textContent = '👁';
+  document.getElementById('sync-gist-id').value = gistId;
+  document.getElementById('gist-id-field').style.display = gistId ? 'flex' : 'none';
+  document.getElementById('sync-connected-badge').style.display = token ? 'block' : 'none';
+  document.getElementById('sync-token-status').textContent = '';
+  setSyncStatus('');
+  document.getElementById('sync-overlay').classList.add('open');
+}
+
+function closeSyncModal() {
+  document.getElementById('sync-overlay').classList.remove('open');
+}
+
+function outsideSyncClose(e) {
+  if (e.target === document.getElementById('sync-overlay')) closeSyncModal();
+}
+
+function toggleTokenVis() {
+  const inp = document.getElementById('sync-token');
+  const btn = document.getElementById('tok-vis-btn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function setSyncStatus(msg, color = 'var(--text-dim)') {
+  document.getElementById('sync-status-area').innerHTML =
+    msg ? `<span style="color:${color}">${msg}</span>` : '';
+}
+
+function getSyncToken() {
+  const inp = document.getElementById('sync-token').value.trim();
+  if (inp) {
+    localStorage.setItem('sb_gh_token', inp);
+    document.getElementById('sync-connected-badge').style.display = 'block';
+  }
+  return inp || localStorage.getItem('sb_gh_token') || '';
+}
+
+// Strip embedded base64 audio data for sync (keep only URL-based sounds fully, keep metadata for local)
+function buildSyncPayload() {
+  return sounds.map(s => {
+    if (s.url) return { ...s }; // URL sounds: sync everything
+    // Local file sounds: sync metadata only, not the base64 blob
+    const { data, ...meta } = s;
+    return { ...meta, _localOnly: true };
+  });
+}
+
+async function syncPush() {
+  const token = getSyncToken();
+  if (!token) { setSyncStatus('⚠️ Paste your GitHub token first', 'var(--accent3)'); return; }
+  if (!sounds.length) { setSyncStatus('No sounds to push', 'var(--text-dim)'); return; }
+
+  setSyncStatus('Pushing to GitHub...', 'var(--text-dim)');
+
+  const payload = buildSyncPayload();
+  const body = {
+    description: 'StreamBoard sound library — do not edit manually',
+    public: false,
+    files: { [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) } }
+  };
+
+  const gistId = localStorage.getItem('sb_gist_id');
+
+  try {
+    const url = gistId
+      ? `https://api.github.com/gists/${gistId}`
+      : 'https://api.github.com/gists';
+    const method = gistId ? 'PATCH' : 'POST';
+
+    const resp = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    localStorage.setItem('sb_gist_id', data.id);
+    document.getElementById('sync-gist-id').value = data.id;
+    document.getElementById('gist-id-field').style.display = 'flex';
+
+    const urlSounds = payload.filter(s => s.url).length;
+    const localSounds = payload.filter(s => s._localOnly).length;
+    let msg = `✅ Pushed ${payload.length} sounds`;
+    if (localSounds) msg += ` (${localSounds} local-file metadata only)`;
+    setSyncStatus(msg, 'var(--accent)');
+    showStatus('Library pushed to GitHub ✅');
+  } catch(e) {
+    setSyncStatus('❌ Push failed: ' + e.message, 'var(--danger)');
+  }
+}
+
+async function syncPull() {
+  const token = getSyncToken();
+  if (!token) { setSyncStatus('⚠️ Paste your GitHub token first', 'var(--accent3)'); return; }
+
+  setSyncStatus('Fetching from GitHub...', 'var(--text-dim)');
+
+  let gistId = localStorage.getItem('sb_gist_id') || document.getElementById('sync-gist-id').value.trim();
+
+  try {
+    // If no gist ID stored, find the StreamBoard gist automatically
+    if (!gistId) {
+      setSyncStatus('Looking up your Gists...', 'var(--text-dim)');
+      const listResp = await fetch('https://api.github.com/gists?per_page=30', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+      if (!listResp.ok) throw new Error(`HTTP ${listResp.status}`);
+      const list = await listResp.json();
+      const found = list.find(g => g.files && g.files[GIST_FILENAME]);
+      if (!found) {
+        setSyncStatus('No StreamBoard Gist found. Push first from your main device.', 'var(--accent3)');
+        return;
+      }
+      gistId = found.id;
+      localStorage.setItem('sb_gist_id', gistId);
+      document.getElementById('sync-gist-id').value = gistId;
+      document.getElementById('gist-id-field').style.display = 'flex';
+    }
+
+    const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const gist = await resp.json();
+    const fileContent = gist.files[GIST_FILENAME]?.content;
+    if (!fileContent) throw new Error('StreamBoard file not found in Gist');
+
+    const incoming = JSON.parse(fileContent);
+    if (!Array.isArray(incoming)) throw new Error('Invalid format');
+
+    // Merge: incoming wins for URL sounds; preserve local data for _localOnly
+    const merged = [...sounds];
+    let updated = 0, added = 0;
+
+    incoming.forEach(inSound => {
+      const existing = merged.find(x => x.id === inSound.id);
+      if (existing) {
+        // Update metadata but preserve local data blob if exists
+        const data = existing.data || null;
+        Object.assign(existing, inSound);
+        if (inSound._localOnly && data) existing.data = data;
+        delete existing._localOnly;
+        updated++;
+      } else {
+        const s = { ...inSound };
+        delete s._localOnly;
+        merged.push(s);
+        added++;
+      }
+    });
+
+    sounds = merged;
+    save(); render();
+    setSyncStatus(`✅ Pulled: ${added} new, ${updated} updated`, 'var(--accent)');
+    showStatus(`Sync complete — ${added} added, ${updated} updated`);
+  } catch(e) {
+    setSyncStatus('❌ Pull failed: ' + e.message, 'var(--danger)');
+  }
+}
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────
+function exportSounds() {
+  if (!sounds.length) { showStatus('No sounds to export'); return; }
+  const blob = new Blob([JSON.stringify(sounds, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `streamboard_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus(`Exported ${sounds.length} sounds`);
+}
+
+function importSounds(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      const merged = [...sounds];
+      let added = 0;
+      data.forEach(s => {
+        if (!merged.find(x => x.id === s.id)) {
+          merged.push(s);
+          added++;
+        }
+      });
+      sounds = merged;
+      save(); render();
+      showStatus(`Imported ${added} new sounds`);
+    } catch(err) {
+      showStatus('Import failed: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ─── STATUS BAR ───────────────────────────────────────────
+let statusTimer;
+function showStatus(msg) {
+  const bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.classList.add('show');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => bar.classList.remove('show'), 2200);
+}
+
+// ─── KEYBOARD SHORTCUTS ──────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'Escape') { stopAll(); closeModal(); }
+  if (e.key === 'f' || e.key === '/') {
+    e.preventDefault();
+    document.getElementById('search').focus();
+  }
+});
+
+// ─── INIT ─────────────────────────────────────────────────
+load();
+render();
+
+// Show tip for first time users
+if (!sounds.length) {
+  setTimeout(() => showStatus('Tap + ADD to add your first sound effect!'), 800);
+}
+
+// Prevent double-tap zoom on mobile
+let lastTap = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
+</script>
+</body>
+</html>
