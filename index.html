@@ -75,23 +75,54 @@
   .sound-card .fav-badge { font-size: 10px; opacity: 0.7; flex-shrink: 0; }
   .progress-bar { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--accent); width: 0%; transition: width .1s linear; }
 
-  /* Category color coding */
-  .sound-card[data-catidx="1"] { border-left: 3px solid #7a1e80; }
-  .sound-card[data-catidx="1"]:hover { border-color: var(--accent2); box-shadow: 0 0 10px rgba(245,0,160,0.15); }
-  .sound-card[data-catidx="2"] { border-left: 3px solid #1e7a40; }
-  .sound-card[data-catidx="2"]:hover { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,245,160,0.15); }
-  .sound-card[data-catidx="3"] { border-left: 3px solid #1e3a7a; }
-  .sound-card[data-catidx="3"]:hover { border-color: var(--accent4); box-shadow: 0 0 10px rgba(0,144,245,0.15); }
-  .sound-card[data-catidx="4"] { border-left: 3px solid #7a5a1e; }
-  .sound-card[data-catidx="4"]:hover { border-color: var(--accent3); box-shadow: 0 0 10px rgba(245,160,0,0.15); }
-  .sound-card[data-catidx="5"] { border-left: 3px solid #1e5a7a; }
-  .sound-card[data-catidx="5"]:hover { border-color: #00d4f5; box-shadow: 0 0 10px rgba(0,212,245,0.15); }
-  .sound-card[data-catidx="6"] { border-left: 3px solid #7a1e1e; }
-  .sound-card[data-catidx="6"]:hover { border-color: var(--danger); box-shadow: 0 0 10px rgba(255,59,92,0.15); }
+  /* Category color palette — 7 vivid colors */
+  :root {
+    --c1: #d400ff; /* pink-purple */
+    --c2: #00f5a0; /* green */
+    --c3: #0090f5; /* blue */
+    --c4: #f5a000; /* amber */
+    --c5: #00d4f5; /* cyan */
+    --c6: #ff3b5c; /* red */
+    --c7: #80f520; /* lime */
+  }
 
-  .sound-card[data-catidx="7"] { border-left: 3px solid #3a7a1e; }
-  .sound-card[data-catidx="7"]:hover { border-color: #80f520; box-shadow: 0 0 10px rgba(128,245,32,0.15); }
+  /* Category pill colors */
+  .cat-btn[data-cat="cat1"] { border-color: var(--c1); color: var(--c1); }
+  .cat-btn[data-cat="cat1"].active, .cat-btn[data-cat="cat1"]:hover { background: rgba(212,0,255,0.15); }
+  .cat-btn[data-cat="cat2"] { border-color: var(--c2); color: var(--c2); }
+  .cat-btn[data-cat="cat2"].active, .cat-btn[data-cat="cat2"]:hover { background: rgba(0,245,160,0.15); }
+  .cat-btn[data-cat="cat3"] { border-color: var(--c3); color: var(--c3); }
+  .cat-btn[data-cat="cat3"].active, .cat-btn[data-cat="cat3"]:hover { background: rgba(0,144,245,0.15); }
+  .cat-btn[data-cat="cat4"] { border-color: var(--c4); color: var(--c4); }
+  .cat-btn[data-cat="cat4"].active, .cat-btn[data-cat="cat4"]:hover { background: rgba(245,160,0,0.15); }
+  .cat-btn[data-cat="cat5"] { border-color: var(--c5); color: var(--c5); }
+  .cat-btn[data-cat="cat5"].active, .cat-btn[data-cat="cat5"]:hover { background: rgba(0,212,245,0.15); }
+  .cat-btn[data-cat="cat6"] { border-color: var(--c6); color: var(--c6); }
+  .cat-btn[data-cat="cat6"].active, .cat-btn[data-cat="cat6"]:hover { background: rgba(255,59,92,0.15); }
+  .cat-btn[data-cat="cat7"] { border-color: var(--c7); color: var(--c7); }
+  .cat-btn[data-cat="cat7"].active, .cat-btn[data-cat="cat7"]:hover { background: rgba(128,245,32,0.15); }
+
+  /* Song row background tints matching category */
+  .sound-card[data-catidx="1"] { border-left: 4px solid var(--c1); background: rgba(212,0,255,0.10); }
+  .sound-card[data-catidx="1"] .label { color: var(--c1); }
+  .sound-card[data-catidx="2"] { border-left: 4px solid var(--c2); background: rgba(0,245,160,0.10); }
+  .sound-card[data-catidx="2"] .label { color: var(--c2); }
+  .sound-card[data-catidx="3"] { border-left: 4px solid var(--c3); background: rgba(0,144,245,0.10); }
+  .sound-card[data-catidx="3"] .label { color: var(--c3); }
+  .sound-card[data-catidx="4"] { border-left: 4px solid var(--c4); background: rgba(245,160,0,0.10); }
+  .sound-card[data-catidx="4"] .label { color: var(--c4); }
+  .sound-card[data-catidx="5"] { border-left: 4px solid var(--c5); background: rgba(0,212,245,0.10); }
+  .sound-card[data-catidx="5"] .label { color: var(--c5); }
+  .sound-card[data-catidx="6"] { border-left: 4px solid var(--c6); background: rgba(255,59,92,0.10); }
+  .sound-card[data-catidx="6"] .label { color: var(--c6); }
+  .sound-card[data-catidx="7"] { border-left: 4px solid var(--c7); background: rgba(128,245,32,0.10); }
+  .sound-card[data-catidx="7"] .label { color: var(--c7); }
+
+  #empty-state { grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 60px 20px; font-size: 13px; line-height: 2; display: none; }
   #empty-state .big { font-size: 40px; }
+
+  /* Playing state */
+  .sound-card.playing { filter: brightness(1.4); box-shadow: 0 0 12px rgba(255,255,255,0.15); }
 
   /* MODALS */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
@@ -876,7 +907,7 @@ function outsideTrimClose(e) { if (e.target === document.getElementById('trim-ov
 // ═══════════════════════════════════════════════════
 // CATEGORY EDITOR
 // ═══════════════════════════════════════════════════
-const CAT_COLORS = ['#f500a0','#00f5a0','#0090f5','#f5a000','#00d4f5','#ff3b5c','#80f520'];
+const CAT_COLORS = ['#d400ff','#00f5a0','#0090f5','#f5a000','#00d4f5','#ff3b5c','#80f520'];
 
 function openCatEditor() {
   const rows = document.getElementById('cat-editor-rows');
