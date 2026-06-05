@@ -509,7 +509,11 @@ function render() {
       }, 500);
     });
     card.addEventListener('pointerup', () => {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; playSound(s.id); }
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        if (activeNodes[s.id]) { stopSound(s.id); } else { playSound(s.id); }
+      }
     });
     card.addEventListener('pointercancel', () => { clearTimeout(longPressTimer); longPressTimer = null; });
     card.addEventListener('contextmenu', (e) => { e.preventDefault(); openCtxMenu(s.id, e.clientX, e.clientY); });
