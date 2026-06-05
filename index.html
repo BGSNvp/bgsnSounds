@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🎚️ StreamBoard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3d;
@@ -73,6 +74,10 @@
   .sound-card .src-badge { display: none; }
   .sound-card .trim-badge { display: none; }
   .sound-card .fav-badge { font-size: 10px; opacity: 0.7; flex-shrink: 0; }
+  .drag-handle { font-size: 18px; color: var(--text-dim); cursor: grab; flex-shrink: 0; padding: 0 2px; opacity: 0.4; touch-action: none; line-height: 1; }
+  .drag-handle:active { cursor: grabbing; opacity: 0.9; }
+  .sortable-ghost { opacity: 0.25; }
+  .sortable-drag { opacity: 0.95; box-shadow: 0 8px 30px rgba(0,0,0,0.6); transform: scale(1.02); }
   .progress-bar { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--accent); width: 0%; transition: width .1s linear; }
 
   /* Category color palette — 7 vivid colors */
@@ -474,7 +479,7 @@ function render() {
   [...grid.querySelectorAll('.sound-card')].forEach(el => el.remove());
   countEl.textContent = `${filtered.length}/${sounds.length}`;
 
-  if (filtered.length === 0) { empty.style.display = 'block'; return; }
+  if (filtered.length === 0) { empty.style.display = 'block'; initSortable(); return; }
   empty.style.display = 'none';
 
   filtered.forEach(s => {
@@ -492,6 +497,7 @@ function render() {
       </div>
       ${s.fav ? '<span class="fav-badge">⭐</span>' : ''}
       <span class="src-badge">${s.url ? '🔗' : '💾'}</span>
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <div class="progress-bar" id="pb-${s.id}"></div>
     `;
     const trim = s.trim || 1.0;
@@ -503,12 +509,14 @@ function render() {
     }
 
     card.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.drag-handle')) return; // let SortableJS handle it
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
         openCtxMenu(s.id, e.clientX, e.clientY);
       }, 500);
     });
-    card.addEventListener('pointerup', () => {
+    card.addEventListener('pointerup', (e) => {
+      if (e.target.closest('.drag-handle')) return;
       if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -519,6 +527,7 @@ function render() {
     card.addEventListener('contextmenu', (e) => { e.preventDefault(); openCtxMenu(s.id, e.clientX, e.clientY); });
     grid.appendChild(card);
   });
+  initSortable();
 }
 
 function escHtml(str) {
@@ -1126,9 +1135,40 @@ document.addEventListener('touchend', (e) => {
 load();
 renderCatBar();
 render();
+initSortable();
 if (!sounds.length) setTimeout(() => showStatus('Tap + ADD to add your first sound!'), 800);
 // Preload favorites after a short delay
 setTimeout(preloadFavorites, 1500);
+
+// ═══════════════════════════════════════════════════
+// SORTABLE
+// ═══════════════════════════════════════════════════
+let sortableInstance = null;
+
+function initSortable() {
+  const grid = document.getElementById('grid');
+  if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
+  sortableInstance = Sortable.create(grid, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    dragClass: 'sortable-drag',
+    onEnd: () => {
+      // Read new DOM order, remap sounds array to match
+      const cards = [...grid.querySelectorAll('.sound-card[data-id]')];
+      const newOrder = cards.map(c => c.dataset.id);
+      // Build a lookup
+      const byId = Object.fromEntries(sounds.map(s => [s.id, s]));
+      // Reorder sounds that are visible, keep hidden ones (filtered) in place at end
+      const reordered = newOrder.map(id => byId[id]).filter(Boolean);
+      const visibleIds = new Set(newOrder);
+      const rest = sounds.filter(s => !visibleIds.has(s.id));
+      sounds = [...reordered, ...rest];
+      save();
+      showStatus('Order saved');
+    }
+  });
+}
 </script>
 </body>
 </html>
