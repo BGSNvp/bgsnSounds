@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🎚️ StreamBoard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3d;
@@ -76,8 +75,6 @@
   .sound-card .fav-badge { font-size: 10px; opacity: 0.7; flex-shrink: 0; }
   .drag-handle { font-size: 18px; color: var(--text-dim); cursor: grab; flex-shrink: 0; padding: 0 2px; opacity: 0.4; touch-action: none; line-height: 1; }
   .drag-handle:active { cursor: grabbing; opacity: 0.9; }
-  .sortable-ghost { opacity: 0.25; }
-  .sortable-drag { opacity: 0.95; box-shadow: 0 8px 30px rgba(0,0,0,0.6); transform: scale(1.02); }
   .progress-bar { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--accent); width: 0%; transition: width .1s linear; }
 
   /* Category color palette — 7 vivid colors */
@@ -313,14 +310,22 @@
       <label>Gist ID</label>
       <input type="text" id="sync-gist-id" placeholder="auto" readonly style="color:var(--text-dim)">
     </div>
+    <div class="field">
+      <label id="pin-label">Sync PIN <span style="color:var(--text-dim);font-size:10px" id="pin-hint"></span></label>
+      <div style="display:flex;gap:6px">
+        <input type="password" id="sync-pin" placeholder="Enter PIN to authorize sync" style="flex:1" maxlength="20">
+        <button class="btn" onclick="togglePinVis()" id="pin-vis-btn" style="padding:8px 10px">👁</button>
+      </div>
+      <div id="pin-status" style="font-size:10px;margin-top:4px;min-height:14px"></div>
+    </div>
     <div style="display:flex;gap:6px">
       <button class="btn" style="flex:1" onclick="closeSyncModal()">CANCEL</button>
-      <button class="btn" style="flex:1;border-color:var(--accent4);color:var(--accent4)" onclick="syncPull()">⬇ PULL</button>
-      <button class="btn accent" style="flex:1" onclick="syncPush()">⬆ PUSH</button>
+      <button class="btn" style="flex:1;border-color:var(--accent4);color:var(--accent4)" onclick="syncPullWithPin()">⬇ PULL</button>
+      <button class="btn accent" style="flex:1" onclick="syncPushWithPin()">⬆ PUSH</button>
     </div>
     <div id="sync-status-area" style="font-size:11px;min-height:20px;text-align:center"></div>
     <div id="sync-connected-badge" style="display:none;font-size:10px;color:var(--accent);text-align:center">✅ Token saved on this device</div>
-    <div style="font-size:9px;color:var(--text-dim);line-height:1.6">Token stored only in this device's localStorage. Gist is private. URL-based sounds sync perfectly; embedded file audio does not.</div>
+    <div style="font-size:9px;color:var(--text-dim);line-height:1.6">Token and PIN stored only in this device's localStorage. Gist is private.</div>
   </div>
 </div>
 
@@ -1001,14 +1006,66 @@ const GIST_FILENAME = 'streamboard_library.json';
 function openSyncModal() {
   const token = localStorage.getItem('sb_gh_token') || '';
   const gistId = localStorage.getItem('sb_gist_id') || '';
+  const hasPin = !!localStorage.getItem('sb_pin_hash');
   document.getElementById('sync-token').value = token;
   document.getElementById('sync-token').type = 'password';
   document.getElementById('tok-vis-btn').textContent = '👁';
   document.getElementById('sync-gist-id').value = gistId;
   document.getElementById('gist-id-field').style.display = gistId ? 'flex' : 'none';
   document.getElementById('sync-connected-badge').style.display = token ? 'block' : 'none';
+  document.getElementById('sync-pin').value = '';
+  document.getElementById('sync-pin').type = 'password';
+  document.getElementById('pin-vis-btn').textContent = '👁';
+  document.getElementById('pin-hint').textContent = hasPin ? '(set)' : '(not set — first entry creates PIN)';
+  document.getElementById('pin-status').textContent = '';
   setSyncStatus('');
   document.getElementById('sync-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('sync-pin').focus(), 150);
+}
+
+function togglePinVis() {
+  const inp = document.getElementById('sync-pin'), btn = document.getElementById('pin-vis-btn');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+// Simple hash — not cryptographic but good enough for local PIN protection
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('sb_salt_' + pin));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function verifyPin() {
+  const pin = document.getElementById('sync-pin').value.trim();
+  if (!pin) { document.getElementById('pin-status').innerHTML = '<span style="color:var(--danger)">⚠️ Enter a PIN</span>'; return false; }
+  const stored = localStorage.getItem('sb_pin_hash');
+  if (!stored) {
+    // First time — set the PIN
+    const hash = await hashPin(pin);
+    localStorage.setItem('sb_pin_hash', hash);
+    document.getElementById('pin-hint').textContent = '(set)';
+    document.getElementById('pin-status').innerHTML = '<span style="color:var(--accent)">✅ PIN created</span>';
+    return true;
+  }
+  const hash = await hashPin(pin);
+  if (hash === stored) {
+    document.getElementById('pin-status').innerHTML = '<span style="color:var(--accent)">✅ PIN correct</span>';
+    return true;
+  }
+  document.getElementById('pin-status').innerHTML = '<span style="color:var(--danger)">❌ Wrong PIN</span>';
+  document.getElementById('sync-pin').value = '';
+  document.getElementById('sync-pin').focus();
+  return false;
+}
+
+async function syncPushWithPin() {
+  if (!await verifyPin()) return;
+  syncPush();
+}
+
+async function syncPullWithPin() {
+  if (!await verifyPin()) return;
+  syncPull();
 }
 function closeSyncModal() { document.getElementById('sync-overlay').classList.remove('open'); }
 function outsideSyncClose(e) { if (e.target === document.getElementById('sync-overlay')) closeSyncModal(); }
@@ -1130,45 +1187,151 @@ document.addEventListener('touchend', (e) => {
 }, { passive: false });
 
 // ═══════════════════════════════════════════════════
+// DRAG TO REORDER — self-contained, no CDN needed
+// ═══════════════════════════════════════════════════
+let drag = {
+  el: null,        // the card being dragged
+  clone: null,     // floating visual clone
+  placeholder: null, // empty slot showing drop position
+  startX: 0, startY: 0,
+  offsetX: 0, offsetY: 0,
+  active: false
+};
+
+function initSortable() {
+  // Attach drag listeners to all drag handles
+  const grid = document.getElementById('grid');
+  grid.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('pointerdown', onDragStart, { passive: false });
+  });
+}
+
+function onDragStart(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const card = e.target.closest('.sound-card');
+  if (!card) return;
+
+  drag.el = card;
+  drag.active = false;
+
+  const rect = card.getBoundingClientRect();
+  drag.offsetX = e.clientX - rect.left;
+  drag.offsetY = e.clientY - rect.top;
+  drag.startX = e.clientX;
+  drag.startY = e.clientY;
+
+  // Create placeholder (same size as card)
+  drag.placeholder = document.createElement('div');
+  drag.placeholder.style.cssText = `
+    width: ${rect.width}px; height: ${rect.height}px;
+    border: 2px dashed var(--accent); border-radius: 10px;
+    background: rgba(0,245,160,0.05); box-sizing: border-box;
+  `;
+
+  // Create floating clone
+  drag.clone = card.cloneNode(true);
+  drag.clone.style.cssText = `
+    position: fixed;
+    width: ${rect.width}px; height: ${rect.height}px;
+    left: ${rect.left}px; top: ${rect.top}px;
+    pointer-events: none; z-index: 9999;
+    opacity: 0.92; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    transform: scale(1.03); transition: transform 0.1s;
+    border-radius: 10px;
+  `;
+  document.body.appendChild(drag.clone);
+
+  document.addEventListener('pointermove', onDragMove, { passive: false });
+  document.addEventListener('pointerup', onDragEnd);
+  document.addEventListener('pointercancel', onDragEnd);
+}
+
+function onDragMove(e) {
+  e.preventDefault();
+  if (!drag.el) return;
+
+  const dx = e.clientX - drag.startX;
+  const dy = e.clientY - drag.startY;
+
+  // Start drag after 5px movement threshold
+  if (!drag.active && Math.sqrt(dx*dx + dy*dy) > 5) {
+    drag.active = true;
+    drag.el.replaceWith(drag.placeholder);
+    drag.el.style.visibility = 'hidden';
+  }
+
+  if (!drag.active) return;
+
+  // Move clone
+  drag.clone.style.left = (e.clientX - drag.offsetX) + 'px';
+  drag.clone.style.top  = (e.clientY - drag.offsetY) + 'px';
+
+  // Find which card we're hovering over
+  drag.clone.style.display = 'none';
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  drag.clone.style.display = '';
+
+  const targetCard = target && target.closest('.sound-card, .sortable-placeholder');
+  const grid = document.getElementById('grid');
+
+  if (targetCard && targetCard !== drag.placeholder && grid.contains(targetCard)) {
+    const targetRect = targetCard.getBoundingClientRect();
+    const midX = targetRect.left + targetRect.width / 2;
+    const midY = targetRect.top + targetRect.height / 2;
+    // Insert before or after based on pointer position relative to target center
+    if (e.clientY < midY || (Math.abs(e.clientY - midY) < 10 && e.clientX < midX)) {
+      grid.insertBefore(drag.placeholder, targetCard);
+    } else {
+      targetCard.after(drag.placeholder);
+    }
+  }
+}
+
+function onDragEnd(e) {
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', onDragEnd);
+  document.removeEventListener('pointercancel', onDragEnd);
+
+  if (!drag.el) return;
+
+  if (drag.active && drag.placeholder && drag.placeholder.parentNode) {
+    // Drop card at placeholder position
+    drag.el.style.visibility = '';
+    drag.placeholder.replaceWith(drag.el);
+
+    // Save new order
+    const grid = document.getElementById('grid');
+    const cards = [...grid.querySelectorAll('.sound-card[data-id]')];
+    const newOrder = cards.map(c => c.dataset.id);
+    const byId = Object.fromEntries(sounds.map(s => [s.id, s]));
+    const reordered = newOrder.map(id => byId[id]).filter(Boolean);
+    const visibleIds = new Set(newOrder);
+    const rest = sounds.filter(s => !visibleIds.has(s.id));
+    sounds = [...reordered, ...rest];
+    save();
+    showStatus('Order saved ✓');
+  } else {
+    // Didn't actually drag — restore
+    drag.el.style.visibility = '';
+    if (drag.placeholder && drag.placeholder.parentNode) {
+      drag.placeholder.replaceWith(drag.el);
+    }
+  }
+
+  if (drag.clone) drag.clone.remove();
+  drag = { el: null, clone: null, placeholder: null, startX: 0, startY: 0, offsetX: 0, offsetY: 0, active: false };
+}
+
+// ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
 load();
 renderCatBar();
 render();
-initSortable();
 if (!sounds.length) setTimeout(() => showStatus('Tap + ADD to add your first sound!'), 800);
-// Preload favorites after a short delay
 setTimeout(preloadFavorites, 1500);
-
-// ═══════════════════════════════════════════════════
-// SORTABLE
-// ═══════════════════════════════════════════════════
-let sortableInstance = null;
-
-function initSortable() {
-  const grid = document.getElementById('grid');
-  if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
-  sortableInstance = Sortable.create(grid, {
-    handle: '.drag-handle',
-    animation: 150,
-    ghostClass: 'sortable-ghost',
-    dragClass: 'sortable-drag',
-    onEnd: () => {
-      // Read new DOM order, remap sounds array to match
-      const cards = [...grid.querySelectorAll('.sound-card[data-id]')];
-      const newOrder = cards.map(c => c.dataset.id);
-      // Build a lookup
-      const byId = Object.fromEntries(sounds.map(s => [s.id, s]));
-      // Reorder sounds that are visible, keep hidden ones (filtered) in place at end
-      const reordered = newOrder.map(id => byId[id]).filter(Boolean);
-      const visibleIds = new Set(newOrder);
-      const rest = sounds.filter(s => !visibleIds.has(s.id));
-      sounds = [...reordered, ...rest];
-      save();
-      showStatus('Order saved');
-    }
-  });
-}
 </script>
 </body>
 </html>
