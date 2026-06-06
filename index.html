@@ -353,6 +353,10 @@ let longPressTimer = null;
 let pendingAudioData = null;
 let pendingNormalizedGain = 1.0;
 
+// orders: { all: [...ids], cat1: [...ids], cat2: [...ids], ... }
+// Each view stores its own independent sort order.
+let orders = {};
+
 // ═══════════════════════════════════════════════════
 // LRU AUDIO CACHE
 // Max 30 decoded buffers in RAM. LRU eviction.
@@ -418,6 +422,7 @@ function getAudioCtx() {
 function save() {
   localStorage.setItem('streamboard_sounds', JSON.stringify(sounds));
   localStorage.setItem('streamboard_cats', JSON.stringify(categories));
+  localStorage.setItem('streamboard_orders', JSON.stringify(orders));
 }
 
 function load() {
@@ -429,6 +434,10 @@ function load() {
     const c = localStorage.getItem('streamboard_cats');
     if (c) categories = JSON.parse(c);
   } catch(e) {}
+  try {
+    const o = localStorage.getItem('streamboard_orders');
+    if (o) orders = JSON.parse(o);
+  } catch(e) {}
   const savedVol = localStorage.getItem('streamboard_master_vol');
   if (savedVol !== null) {
     masterVolume = parseFloat(savedVol);
@@ -436,6 +445,26 @@ function load() {
     document.getElementById('vol-slider').value = pct;
     document.getElementById('vol-label').textContent = pct + '%';
   }
+}
+
+// Return sounds sorted by the order for the given view key.
+// Sounds not yet in the order list appear at the end.
+function getSortedSounds(viewKey, pool) {
+  const order = orders[viewKey] || [];
+  const orderMap = new Map(order.map((id, i) => [id, i]));
+  return [...pool].sort((a, b) => {
+    const ia = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
+    const ib = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
+    return ia - ib;
+  });
+}
+
+// Save the current DOM order for the active view
+function saveOrderFromDOM() {
+  const grid = document.getElementById('grid');
+  const ids = [...grid.querySelectorAll('.sound-card[data-id]')].map(c => c.dataset.id);
+  orders[activeCat] = ids;
+  save();
 }
 
 // ═══════════════════════════════════════════════════
@@ -473,8 +502,13 @@ function render() {
   const empty = document.getElementById('empty-state');
   const countEl = document.getElementById('sound-count');
 
-  let filtered = sounds;
-  if (activeCat !== 'all') filtered = filtered.filter(s => s.cat === activeCat);
+  // Filter by category
+  let pool = activeCat === 'all' ? sounds : sounds.filter(s => s.cat === activeCat);
+
+  // Sort by this view's independent order
+  let filtered = getSortedSounds(activeCat, pool);
+
+  // Then apply search on top (search disables drag reorder to avoid confusion)
   if (searchQ) {
     const q = searchQ.toLowerCase();
     filtered = filtered.filter(s => s.name.toLowerCase().includes(q));
@@ -950,7 +984,7 @@ function saveCatEditor() {
 // ═══════════════════════════════════════════════════
 function exportSounds() {
   if (!sounds.length) { showStatus('No sounds to export'); return; }
-  const payload = { sounds, categories };
+  const payload = { sounds, categories, orders };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -969,6 +1003,7 @@ function importSounds(e) {
       // Support both old array format and new {sounds, categories} format
       const incoming = Array.isArray(parsed) ? parsed : (parsed.sounds || []);
       const incomingCats = parsed.categories || null;
+      const incomingOrders = parsed.orders || null;
 
       const merged = [...sounds];
       let added = 0;
@@ -978,6 +1013,7 @@ function importSounds(e) {
       });
       sounds = merged;
       if (incomingCats) categories = incomingCats;
+      if (incomingOrders) orders = incomingOrders;
       save(); renderCatBar(); render();
       showStatus(`Imported ${added} new sounds`);
     } catch(err) { showStatus('Import failed: ' + err.message); }
@@ -1073,6 +1109,7 @@ function getSyncToken() {
 function buildSyncPayload() {
   return {
     categories,
+    orders,
     sounds: sounds.map(s => s.url ? { ...s } : (({ data, ...meta }) => ({ ...meta, _localOnly: true }))(s))
   };
 }
@@ -1123,6 +1160,7 @@ async function syncPull() {
     // Support both old array format and new object format
     const inSounds = Array.isArray(incoming) ? incoming : (incoming.sounds || []);
     const inCats = incoming.categories || null;
+    const inOrders = incoming.orders || null;
 
     const merged = [...sounds];
     let updated = 0, added = 0;
@@ -1140,6 +1178,7 @@ async function syncPull() {
     });
     sounds = merged;
     if (inCats) categories = inCats;
+    if (inOrders) orders = inOrders;
     save(); renderCatBar(); render();
     setSyncStatus(`✅ ${added} added, ${updated} updated`, 'var(--accent)');
     showStatus(`Sync done — ${added} added, ${updated} updated`);
@@ -1288,17 +1327,7 @@ function onDragEnd(e) {
     // Drop card at placeholder position
     drag.el.style.visibility = '';
     drag.placeholder.replaceWith(drag.el);
-
-    // Save new order
-    const grid = document.getElementById('grid');
-    const cards = [...grid.querySelectorAll('.sound-card[data-id]')];
-    const newOrder = cards.map(c => c.dataset.id);
-    const byId = Object.fromEntries(sounds.map(s => [s.id, s]));
-    const reordered = newOrder.map(id => byId[id]).filter(Boolean);
-    const visibleIds = new Set(newOrder);
-    const rest = sounds.filter(s => !visibleIds.has(s.id));
-    sounds = [...reordered, ...rest];
-    save();
+    saveOrderFromDOM();
     showStatus('Order saved ✓');
   } else {
     // Didn't actually drag — restore
