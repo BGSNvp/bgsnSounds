@@ -343,7 +343,7 @@ let categories = [
   { id: 'cat5', name: 'Gaming' },
   { id: 'cat6', name: 'Custom' },
   { id: 'cat7', name: 'Drops' },
-];
+]; // overwritten by load()
 let activeCat = 'all';
 let searchQ = '';
 let editingId = null;
@@ -425,19 +425,37 @@ function save() {
   localStorage.setItem('streamboard_orders', JSON.stringify(orders));
 }
 
+const DEFAULT_CATEGORIES = [
+  { id: 'cat1', name: 'Reactions' },
+  { id: 'cat2', name: 'Alerts' },
+  { id: 'cat3', name: 'Music' },
+  { id: 'cat4', name: 'Comedy' },
+  { id: 'cat5', name: 'Gaming' },
+  { id: 'cat6', name: 'Custom' },
+  { id: 'cat7', name: 'Drops' },
+];
+
 function load() {
   try {
     const d = localStorage.getItem('streamboard_sounds');
     if (d) sounds = JSON.parse(d);
   } catch(e) { sounds = []; }
+
   try {
     const c = localStorage.getItem('streamboard_cats');
-    if (c) categories = JSON.parse(c);
-  } catch(e) {}
+    if (c) {
+      const parsed = JSON.parse(c);
+      categories = (Array.isArray(parsed) && parsed.length > 0) ? parsed : DEFAULT_CATEGORIES;
+    } else {
+      categories = DEFAULT_CATEGORIES;
+    }
+  } catch(e) { categories = DEFAULT_CATEGORIES; }
+
   try {
     const o = localStorage.getItem('streamboard_orders');
     if (o) orders = JSON.parse(o);
-  } catch(e) {}
+  } catch(e) { orders = {}; }
+
   const savedVol = localStorage.getItem('streamboard_master_vol');
   if (savedVol !== null) {
     masterVolume = parseFloat(savedVol);
@@ -445,6 +463,11 @@ function load() {
     document.getElementById('vol-slider').value = pct;
     document.getElementById('vol-label').textContent = pct + '%';
   }
+
+  // Show diagnostic info in status bar on load
+  setTimeout(() => {
+    showStatus(`Loaded: ${sounds.length} sounds, ${categories.length} categories`);
+  }, 500);
 }
 
 // Return sounds sorted by the order for the given view key.
@@ -517,7 +540,14 @@ function render() {
   [...grid.querySelectorAll('.sound-card')].forEach(el => el.remove());
   countEl.textContent = `${filtered.length}/${sounds.length}`;
 
-  if (filtered.length === 0) { empty.style.display = 'block'; initSortable(); return; }
+  if (filtered.length === 0) {
+    empty.style.display = 'block';
+    empty.innerHTML = sounds.length === 0
+      ? '<span class="big">🎚️</span><br>No sounds yet.<br><span style="font-size:11px">Tap <strong>+ ADD</strong> to add your first sound.</span>'
+      : '<span class="big">🔍</span><br>No sounds match.<br><span style="font-size:11px">Try a different category or clear search.</span>';
+    initSortable();
+    return;
+  }
   empty.style.display = 'none';
 
   filtered.forEach(s => {
