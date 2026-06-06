@@ -662,6 +662,8 @@ function autoShrinkLabels() {
     }
   });
 }
+
+function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
@@ -1611,6 +1613,10 @@ function repoImportSelected() {
   closeRepoImport();
   showStatus(`✅ Added ${added} sounds${skipped ? `, ${skipped} already existed` : ''}`);
 }
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
 load();
 renderCatBar();
 render();
