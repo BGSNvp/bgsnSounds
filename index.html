@@ -59,22 +59,20 @@
   /* GRID — always 2 columns list view */
   #grid { padding: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
 
-  /* SOUND ROW — horizontal list item style */
-  .sound-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 0 10px; cursor: pointer; transition: all .15s; position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; display: flex; flex-direction: row; align-items: center; gap: 8px; min-height: 44px; text-align: left; }
+  /* SOUND ROW — full-width title, no padding, minimal height */
+  .sound-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; padding: 0; cursor: pointer; transition: all .15s; position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; display: flex; flex-direction: row; align-items: stretch; min-height: 0; text-align: left; }
   .sound-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .15s; }
   .sound-card:active { transform: scale(.97); }
-  .sound-card.playing { border-color: var(--playing); box-shadow: 0 0 14px rgba(0,245,160,0.3); }
-  .sound-card.playing::before { opacity: 1; background: rgba(0,245,160,0.06); }
-  .sound-card.cached::after { content: '●'; position: absolute; top: 5px; left: 5px; font-size: 7px; color: var(--accent4); opacity: 0.6; }
+  .sound-card.cached::after { display: none; }
   .sound-card .emoji { display: none; }
-  .sound-card .card-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-  .sound-card .label { font-size: 24px; font-weight: 700; letter-spacing: .1px; line-height: 1.2; color: var(--text); word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .sound-card .cat-tag { font-size: 9px; color: var(--text-dim); }
+  .sound-card .card-text { flex: 1; min-width: 0; display: flex; align-items: center; padding: 7px 8px; }
+  .sound-card .label { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 21px; font-weight: 600; letter-spacing: -0.2px; line-height: 1.15; color: var(--text); word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; }
+  .sound-card .cat-tag { display: none; }
   .sound-card .src-badge { display: none; }
   .sound-card .trim-badge { display: none; }
-  .sound-card .fav-badge { font-size: 10px; opacity: 0.7; flex-shrink: 0; }
-  .drag-handle { font-size: 18px; color: var(--text-dim); cursor: grab; flex-shrink: 0; padding: 0 2px; opacity: 0.4; touch-action: none; line-height: 1; }
-  .drag-handle:active { cursor: grabbing; opacity: 0.9; }
+  .sound-card .fav-badge { display: none; }
+  .drag-handle { font-size: 16px; color: var(--text-dim); cursor: grab; flex-shrink: 0; width: 28px; display: flex; align-items: center; justify-content: center; opacity: 0.3; touch-action: none; border-left: 1px solid var(--border); }
+  .drag-handle:active { cursor: grabbing; opacity: 0.8; }
   .progress-bar { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--accent); width: 0%; transition: width .1s linear; }
 
   /* Category color palette — 7 vivid colors */
@@ -124,7 +122,8 @@
   #empty-state .big { font-size: 40px; }
 
   /* Playing state */
-  .sound-card.playing { filter: brightness(1.4); box-shadow: 0 0 12px rgba(255,255,255,0.15); }
+  .sound-card.playing { filter: brightness(1.4); box-shadow: 0 0 10px rgba(255,255,255,0.12); }
+  .sound-card.playing .progress-bar { background: white; }
 
   /* MODALS */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
@@ -495,23 +494,12 @@ function render() {
     card.dataset.id = s.id;
     card.dataset.catidx = catIdx;
     card.innerHTML = `
-      <span class="emoji">${s.emoji || '🔊'}</span>
       <div class="card-text">
         <span class="label">${escHtml(s.name)}</span>
-        <span class="cat-tag">${escHtml(catName)}</span>
       </div>
-      ${s.fav ? '<span class="fav-badge">⭐</span>' : ''}
-      <span class="src-badge">${s.url ? '🔗' : '💾'}</span>
       <span class="drag-handle" title="Drag to reorder">⠿</span>
       <div class="progress-bar" id="pb-${s.id}"></div>
     `;
-    const trim = s.trim || 1.0;
-    if (Math.abs(trim - 1.0) > 0.02) {
-      const t = document.createElement('span');
-      t.className = 'trim-badge';
-      t.textContent = Math.round(trim * 100) + '%';
-      card.appendChild(t);
-    }
 
     card.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.drag-handle')) return; // let SortableJS handle it
